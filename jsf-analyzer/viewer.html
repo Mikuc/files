@@ -6,19 +6,19 @@
   <title>JSF Analyzer</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen font-mono text-sm select-none">
+<body class="bg-gray-50 text-gray-900 min-h-screen font-sans text-sm select-none">
 
 <!-- ── Top bar ─────────────────────────────────────────────────────────── -->
-<header class="border-b border-gray-800 px-5 py-2.5 flex items-center gap-4 shrink-0">
-  <span class="text-white font-bold text-sm tracking-tight">JSF Analyzer</span>
-  <span id="genDate" class="text-gray-600 text-xs"></span>
-  <div id="statsBar" class="hidden flex items-center gap-3 text-xs">
-    <span class="text-gray-500 bg-gray-900 border border-gray-800 rounded px-2 py-0.5" id="statPages"></span>
-    <span class="text-gray-500 bg-gray-900 border border-gray-800 rounded px-2 py-0.5" id="statEps"></span>
-    <span id="statWsdl" class="hidden text-gray-500 bg-gray-900 border border-gray-800 rounded px-2 py-0.5"></span>
+<header class="bg-white border-b border-gray-200 px-5 py-2.5 flex items-center gap-4 shrink-0 shadow-sm">
+  <span class="text-gray-900 font-bold text-sm tracking-tight">JSF Analyzer</span>
+  <span id="genDate" class="text-gray-400 text-xs"></span>
+  <div id="statsBar" class="hidden flex items-center gap-2 text-xs">
+    <span class="text-gray-600 bg-gray-100 border border-gray-200 rounded-full px-2.5 py-0.5 font-medium" id="statPages"></span>
+    <span class="text-gray-600 bg-gray-100 border border-gray-200 rounded-full px-2.5 py-0.5 font-medium" id="statEps"></span>
+    <span id="statWsdl" class="hidden text-gray-600 bg-gray-100 border border-gray-200 rounded-full px-2.5 py-0.5 font-medium"></span>
   </div>
   <div class="ml-auto">
-    <label class="cursor-pointer text-xs text-gray-500 hover:text-gray-300 border border-gray-700 hover:border-gray-500 rounded px-3 py-1 transition-colors">
+    <label class="cursor-pointer text-xs text-gray-500 hover:text-gray-700 border border-gray-300 hover:border-gray-400 bg-white rounded px-3 py-1.5 transition-colors font-medium">
       Load file
       <input type="file" id="filePick" accept=".json" class="hidden" />
     </label>
@@ -26,30 +26,30 @@
 </header>
 
 <!-- ── Empty state ──────────────────────────────────────────────────────── -->
-<div id="empty" class="flex flex-col items-center justify-center mt-32 gap-4">
-  <p class="text-gray-500 text-sm">Drop <code class="text-blue-400">analysis.json</code> anywhere on the page</p>
-  <p class="text-gray-700 text-xs">or</p>
-  <label class="cursor-pointer text-xs bg-blue-700 hover:bg-blue-600 text-white rounded px-4 py-2 transition-colors">
+<div id="empty" class="flex flex-col items-center justify-center mt-32 gap-3">
+  <div class="text-5xl mb-2">📄</div>
+  <p class="text-gray-600 text-sm font-medium">Drop <code class="text-blue-600 bg-blue-50 px-1 rounded">analysis.json</code> anywhere on the page</p>
+  <p class="text-gray-400 text-xs">or</p>
+  <label class="cursor-pointer text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-5 py-2 transition-colors font-medium shadow-sm">
     Pick file
     <input type="file" id="filePick2" accept=".json" class="hidden" />
   </label>
-  <p class="text-gray-800 text-xs mt-4">
-    Or place <code>viewer.html</code> next to <code>analysis.json</code> and serve via
-    <code>npx serve .</code>
+  <p class="text-gray-300 text-xs mt-4">
+    Or place <code class="font-mono">viewer.html</code> next to <code class="font-mono">analysis.json</code> and serve via <code class="font-mono">npx serve .</code>
   </p>
 </div>
 
 <!-- ── App shell (hidden until loaded) ─────────────────────────────────── -->
-<div id="app" class="hidden flex flex-col" style="height:calc(100vh - 44px)">
+<div id="app" class="hidden flex flex-col" style="height:calc(100vh - 45px)">
 
   <!-- Tab bar -->
-  <div class="flex border-b border-gray-800 px-5 pt-2 shrink-0">
+  <div class="bg-white flex border-b border-gray-200 px-5 shrink-0">
     <button id="tabBtnPages" onclick="switchTab('pages')"
-      class="text-xs font-semibold pb-2 mr-5 border-b-2 border-blue-500 text-blue-400 transition-colors">
+      class="text-sm font-semibold py-3 mr-6 border-b-2 border-blue-600 text-blue-600 transition-colors">
       Pages
     </button>
     <button id="tabBtnEndpoints" onclick="switchTab('endpoints')"
-      class="text-xs font-semibold pb-2 mr-5 border-b-2 border-transparent text-gray-600 hover:text-gray-300 transition-colors">
+      class="text-sm font-semibold py-3 mr-6 border-b-2 border-transparent text-gray-400 hover:text-gray-600 transition-colors">
       Endpoints
     </button>
   </div>
@@ -57,20 +57,20 @@
   <!-- Two-column layout -->
   <div class="flex flex-1 overflow-hidden">
 
-    <!-- Sidebar list -->
-    <aside class="w-64 shrink-0 border-r border-gray-800 flex flex-col">
-      <div class="p-2.5 shrink-0">
+    <!-- Sidebar -->
+    <aside class="w-72 shrink-0 bg-white border-r border-gray-200 flex flex-col">
+      <div class="p-3 border-b border-gray-100">
         <input id="searchBox" type="text" placeholder="Search…" oninput="renderList()"
-          class="w-full bg-gray-900 border border-gray-800 rounded px-3 py-1.5 text-xs
-                 text-gray-100 placeholder-gray-700 focus:outline-none focus:ring-1
-                 focus:ring-blue-700 focus:border-blue-700" />
+          class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm
+                 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2
+                 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
       </div>
-      <div id="listPanel" class="flex-1 overflow-y-auto px-1.5 pb-4"></div>
+      <div id="listPanel" class="flex-1 overflow-y-auto py-2"></div>
     </aside>
 
     <!-- Detail panel -->
-    <main id="detail" class="flex-1 overflow-y-auto p-6">
-      <div id="detailEmpty" class="text-gray-700 text-xs mt-12 text-center">← select an item</div>
+    <main id="detail" class="flex-1 overflow-y-auto p-8 bg-gray-50">
+      <div class="text-gray-300 text-sm mt-16 text-center">← select an item</div>
     </main>
 
   </div>
@@ -78,9 +78,9 @@
 
 <script>
 // ─── State ────────────────────────────────────────────────────────────────────
-let D        = null   // analysis.json data
+let D        = null
 let tab      = 'pages'
-let selected = null   // currently selected relativePath or operationName
+let selected = null
 
 // ─── Load ─────────────────────────────────────────────────────────────────────
 async function tryFetch() {
@@ -131,17 +131,13 @@ document.addEventListener('drop', e => {
 function switchTab(t) {
   tab = t
   selected = null
-  const on  = 'text-xs font-semibold pb-2 mr-5 border-b-2 border-blue-500 text-blue-400 transition-colors'
-  const off = 'text-xs font-semibold pb-2 mr-5 border-b-2 border-transparent text-gray-600 hover:text-gray-300 transition-colors'
+  const on  = 'text-sm font-semibold py-3 mr-6 border-b-2 border-blue-600 text-blue-600 transition-colors'
+  const off = 'text-sm font-semibold py-3 mr-6 border-b-2 border-transparent text-gray-400 hover:text-gray-600 transition-colors'
   document.getElementById('tabBtnPages').className     = t === 'pages'     ? on : off
   document.getElementById('tabBtnEndpoints').className = t === 'endpoints' ? on : off
   renderList()
-  showDetailEmpty()
-}
-
-function showDetailEmpty() {
   document.getElementById('detail').innerHTML =
-    `<div class="text-gray-700 text-xs mt-12 text-center">← select a ${tab === 'pages' ? 'page' : 'endpoint'}</div>`
+    `<div class="text-gray-300 text-sm mt-16 text-center">← select a ${t === 'pages' ? 'page' : 'endpoint'}</div>`
 }
 
 // ─── List ─────────────────────────────────────────────────────────────────────
@@ -164,29 +160,31 @@ function renderPageList(q) {
     )
   )
 
-  // Group by module directory (first path segment)
   const groups = {}
   for (const p of pages) {
-    const mod = p.relativePath.includes('/') ? p.relativePath.split('/')[0] : '.'
+    const mod = p.relativePath.includes('/') ? p.relativePath.split('/')[0] : '—'
     ;(groups[mod] ??= []).push(p)
   }
 
   const el = document.getElementById('listPanel')
-  if (!pages.length) { el.innerHTML = '<div class="text-gray-700 text-xs px-2 py-2">No results</div>'; return }
+  if (!pages.length) {
+    el.innerHTML = '<div class="text-gray-400 text-xs px-4 py-3">No results</div>'
+    return
+  }
 
   el.innerHTML = Object.entries(groups).map(([mod, ps]) => `
-    <div class="mb-3">
-      <div class="text-gray-700 text-xs px-2 py-1 uppercase tracking-widest">${esc(mod)}</div>
+    <div class="mb-1">
+      <div class="text-gray-400 text-xs px-4 py-1.5 uppercase tracking-widest font-semibold">${esc(mod)}</div>
       ${ps.map(p => {
-        const label   = p.title ?? p.titleKey ?? p.relativePath.split('/').pop().replace('.xhtml','')
-        const active  = selected === p.relativePath
-        const nbeans  = p.beans.filter(b => !b.isInfraBean).length
+        const label  = p.title ?? p.titleKey ?? p.relativePath.split('/').pop().replace('.xhtml','')
+        const active = selected === p.relativePath
+        const nb     = p.beans.filter(b => !b.isInfraBean).length
         return `
           <button onclick="openPage('${esc(p.relativePath)}')"
-            class="w-full text-left rounded px-2 py-2 transition-colors ${active ? 'bg-gray-800' : 'hover:bg-gray-900'}">
-            <div class="truncate text-xs ${active ? 'text-white' : 'text-gray-300'}">${esc(label)}</div>
-            <div class="truncate text-gray-600 text-xs mt-0.5">${esc(p.url)}</div>
-            <div class="text-gray-700 text-xs mt-0.5">${nbeans} bean${nbeans !== 1 ? 's' : ''}</div>
+            class="w-full text-left px-4 py-2.5 transition-colors ${active ? 'bg-blue-50 border-r-2 border-blue-500' : 'hover:bg-gray-50'}">
+            <div class="truncate text-sm font-medium ${active ? 'text-blue-700' : 'text-gray-800'}">${esc(label)}</div>
+            <div class="truncate text-gray-400 text-xs mt-0.5 font-mono">${esc(p.url)}</div>
+            <div class="text-gray-400 text-xs mt-0.5">${nb} bean${nb !== 1 ? 's' : ''}</div>
           </button>`
       }).join('')}
     </div>
@@ -202,24 +200,26 @@ function renderEndpointList(q) {
 
   const el    = document.getElementById('listPanel')
   const LIMIT = 250
-  const shown = eps.slice(0, LIMIT)
 
-  if (!eps.length) { el.innerHTML = '<div class="text-gray-700 text-xs px-2 py-2">No results</div>'; return }
+  if (!eps.length) {
+    el.innerHTML = '<div class="text-gray-400 text-xs px-4 py-3">No results</div>'
+    return
+  }
 
-  el.innerHTML = shown.map(e => {
+  el.innerHTML = eps.slice(0, LIMIT).map(e => {
     const usedBy = (D.endpointUsage[e.operationName] ?? []).length
     const active = selected === e.operationName
     return `
       <button onclick="openEndpoint('${esc(e.operationName)}')"
-        class="w-full text-left rounded px-2 py-2 transition-colors ${active ? 'bg-gray-800' : 'hover:bg-gray-900'}">
-        <div class="truncate text-xs ${active ? 'text-white' : 'text-gray-300'}">${esc(e.operationName)}</div>
-        <div class="truncate text-gray-700 text-xs mt-0.5">${esc(e.path)}</div>
-        ${usedBy ? `<div class="text-blue-800 text-xs mt-0.5">${usedBy} page${usedBy !== 1 ? 's' : ''}</div>` : ''}
+        class="w-full text-left px-4 py-2.5 transition-colors ${active ? 'bg-blue-50 border-r-2 border-blue-500' : 'hover:bg-gray-50'}">
+        <div class="truncate text-sm font-medium ${active ? 'text-blue-700' : 'text-gray-800'}">${esc(e.operationName)}</div>
+        <div class="truncate text-gray-400 text-xs font-mono mt-0.5">${esc(e.path)}</div>
+        ${usedBy ? `<div class="text-blue-500 text-xs mt-0.5">${usedBy} page${usedBy !== 1 ? 's' : ''}</div>` : ''}
       </button>`
   }).join('')
 
   if (eps.length > LIMIT)
-    el.innerHTML += `<div class="text-gray-700 text-xs px-2 py-2">+${eps.length - LIMIT} more — narrow search</div>`
+    el.innerHTML += `<div class="text-gray-400 text-xs px-4 py-3">+${eps.length - LIMIT} more — narrow search</div>`
 }
 
 // ─── Page detail ──────────────────────────────────────────────────────────────
@@ -234,40 +234,40 @@ function openPage(relPath) {
   const infraBeans = page.beans.filter(b =>  b.isInfraBean)
 
   document.getElementById('detail').innerHTML = `
-    <div class="max-w-2xl">
+    <div class="max-w-2xl mx-auto">
 
       <!-- header -->
-      <div class="mb-6">
-        <div class="flex flex-wrap items-start gap-2 mb-1">
-          <h2 class="text-white font-bold text-base leading-snug">
+      <div class="mb-7">
+        <div class="flex flex-wrap items-start gap-2 mb-2">
+          <h2 class="text-gray-900 font-bold text-xl leading-snug">
             ${esc(page.title ?? page.relativePath.split('/').pop().replace('.xhtml',''))}
           </h2>
-          ${page.titleKey ? `<span class="text-xs text-gray-600 bg-gray-900 border border-gray-800 rounded px-1.5 py-0.5 mt-0.5">${esc(page.titleKey)}</span>` : ''}
+          ${page.titleKey ? `<span class="text-xs text-gray-500 bg-gray-100 border border-gray-200 rounded px-2 py-0.5 mt-1 font-mono">${esc(page.titleKey)}</span>` : ''}
         </div>
-        <div class="flex items-center gap-2 mt-1">
-          <span class="text-blue-400 font-mono text-xs">${esc(page.url)}</span>
-          <span class="text-gray-700 text-xs">${page.urlSource}</span>
+        <div class="flex items-center gap-2">
+          <span class="text-blue-600 font-mono text-sm">${esc(page.url)}</span>
+          <span class="text-xs text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">${page.urlSource}</span>
         </div>
-        <div class="text-gray-800 text-xs mt-1 truncate">${esc(page.filePath)}</div>
+        <div class="text-gray-400 text-xs mt-1.5 font-mono truncate">${esc(page.filePath)}</div>
       </div>
 
       <!-- main beans -->
       ${mainBeans.length === 0
-        ? '<p class="text-gray-600 text-xs">No feature beans detected.</p>'
+        ? '<p class="text-gray-400 text-sm">No feature beans detected.</p>'
         : mainBeans.map(beanCard).join('')}
 
       <!-- infra beans -->
       ${infraBeans.length ? `
-        <details class="mt-4 group">
-          <summary class="text-gray-700 text-xs cursor-pointer hover:text-gray-500 list-none flex items-center gap-1 select-none">
-            <span class="group-open:rotate-90 inline-block transition-transform">▶</span>
+        <details class="mt-2 group">
+          <summary class="text-gray-400 text-xs cursor-pointer hover:text-gray-600 list-none flex items-center gap-1.5 select-none py-1">
+            <span class="transition-transform group-open:rotate-90 inline-block text-gray-300">▶</span>
             Infrastructure beans (${infraBeans.length})
           </summary>
-          <div class="mt-2 pl-3 border-l border-gray-800 space-y-1">
+          <div class="mt-2 pl-4 border-l-2 border-gray-100 space-y-1.5">
             ${infraBeans.map(b => `
-              <div class="text-xs flex gap-2">
-                <span class="text-gray-600">${esc(b.name)}</span>
-                <span class="text-gray-800">${[...b.methods, ...b.properties].join(', ')}</span>
+              <div class="text-xs flex gap-2 items-baseline">
+                <span class="text-gray-500 font-medium font-mono">${esc(b.name)}</span>
+                <span class="text-gray-400">${[...b.methods, ...b.properties].join(', ')}</span>
               </div>`).join('')}
           </div>
         </details>
@@ -279,43 +279,47 @@ function openPage(relPath) {
 function beanCard(b) {
   const eps = b.matchedEndpoints
   return `
-    <div class="border border-gray-800 rounded-lg p-4 mb-4 bg-gray-900/30">
+    <div class="bg-white border border-gray-200 rounded-xl p-5 mb-4 shadow-sm">
 
-      <div class="text-white font-semibold text-sm mb-3">${esc(b.name)}</div>
+      <div class="text-gray-900 font-bold text-base mb-4 font-mono">${esc(b.name)}</div>
 
       ${b.methods.length ? `
-        <div class="mb-2">
-          <span class="text-gray-700 text-xs mr-2">methods</span>
-          ${b.methods.map(m =>
-            `<span class="inline-block mr-1 mb-1 px-2 py-0.5 rounded-full bg-violet-950 border border-violet-900 text-violet-300 text-xs">${esc(m)}</span>`
-          ).join('')}
+        <div class="mb-3">
+          <span class="text-gray-400 text-xs uppercase tracking-wide font-semibold mr-2">Methods</span>
+          <div class="mt-1.5 flex flex-wrap gap-1">
+            ${b.methods.map(m =>
+              `<span class="px-2.5 py-0.5 rounded-full bg-violet-100 text-violet-700 text-xs font-medium border border-violet-200">${esc(m)}</span>`
+            ).join('')}
+          </div>
         </div>` : ''}
 
       ${b.properties.length ? `
-        <div class="mb-3">
-          <span class="text-gray-700 text-xs mr-2">properties</span>
-          ${b.properties.map(p =>
-            `<span class="inline-block mr-1 mb-1 px-1.5 py-0.5 rounded bg-gray-800 text-gray-500 text-xs">${esc(p)}</span>`
-          ).join('')}
+        <div class="mb-4">
+          <span class="text-gray-400 text-xs uppercase tracking-wide font-semibold mr-2">Properties</span>
+          <div class="mt-1.5 flex flex-wrap gap-1">
+            ${b.properties.map(p =>
+              `<span class="px-2 py-0.5 rounded bg-gray-100 text-gray-600 text-xs font-mono border border-gray-200">${esc(p)}</span>`
+            ).join('')}
+          </div>
         </div>` : ''}
 
       ${eps.length ? `
         <details open>
-          <summary class="text-gray-600 text-xs cursor-pointer hover:text-gray-400 select-none mb-2 list-none flex items-center gap-1">
-            <span class="details-arrow transition-transform">▶</span>
+          <summary class="text-gray-500 text-xs cursor-pointer hover:text-gray-700 select-none mb-2 list-none flex items-center gap-1.5 font-semibold uppercase tracking-wide">
+            <span class="details-arrow transition-transform text-gray-300">▶</span>
             Matched endpoints (${eps.length})
           </summary>
-          <div class="border-l border-gray-800 pl-2 space-y-0.5">
+          <div class="border-l-2 border-gray-100 pl-3 space-y-0.5 mt-2">
             ${eps.map(ep => `
               <button onclick="openEndpointFromPage('${esc(ep.operationName)}')"
-                class="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-800 group/ep">
-                <span class="text-xs font-bold w-5 text-center shrink-0 ${scoreColor(ep.matchScore)}">${ep.matchScore}</span>
-                <span class="text-blue-400 text-xs group-hover/ep:text-blue-300 truncate">${esc(ep.operationName)}</span>
-                <span class="text-gray-700 text-xs truncate">${esc(ep.path)}</span>
+                class="w-full text-left flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-gray-50 group/ep transition-colors">
+                <span class="text-xs font-bold w-5 text-center shrink-0 ${scoreColor(ep.matchScore)} tabular-nums">${ep.matchScore}</span>
+                <span class="text-blue-600 text-sm font-medium group-hover/ep:text-blue-800 truncate">${esc(ep.operationName)}</span>
+                <span class="text-gray-400 text-xs font-mono truncate">${esc(ep.path)}</span>
               </button>`).join('')}
           </div>
         </details>
-      ` : `<div class="text-gray-700 text-xs">No endpoint matches</div>`}
+      ` : `<div class="text-gray-400 text-xs">No endpoint matches</div>`}
 
     </div>`
 }
@@ -336,36 +340,34 @@ function openEndpoint(opName) {
   const usedBy = D.endpointUsage[opName] ?? []
 
   document.getElementById('detail').innerHTML = `
-    <div class="max-w-2xl">
+    <div class="max-w-2xl mx-auto">
 
       <!-- header -->
-      <div class="mb-6">
-        <h2 class="text-white font-bold text-base mb-2">${esc(ep.operationName)}</h2>
+      <div class="mb-7">
+        <h2 class="text-gray-900 font-bold text-xl mb-3 font-mono">${esc(ep.operationName)}</h2>
         <div class="flex items-center gap-2">
-          <span class="text-xs px-2 py-0.5 rounded bg-blue-950 border border-blue-900 text-blue-300 font-bold uppercase">${ep.method}</span>
-          <span class="text-gray-400 font-mono text-xs">${esc(ep.path)}</span>
+          <span class="text-xs px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 font-bold uppercase border border-blue-200">${ep.method}</span>
+          <span class="text-gray-600 font-mono text-sm">${esc(ep.path)}</span>
         </div>
-        ${ep.tags.length ? `<div class="text-gray-700 text-xs mt-1">${ep.tags.join(' · ')}</div>` : ''}
+        ${ep.tags.length ? `<div class="text-gray-400 text-xs mt-2">${ep.tags.join(' · ')}</div>` : ''}
       </div>
 
       <!-- used by -->
-      <div class="mb-6">
-        <div class="text-gray-600 text-xs mb-2">Used by pages</div>
+      <div class="mb-7">
+        <div class="text-gray-500 text-xs uppercase tracking-wide font-semibold mb-2">Used by pages</div>
         ${usedBy.length
-          ? `<div class="flex flex-wrap gap-1">
+          ? `<div class="flex flex-wrap gap-1.5">
               ${usedBy.map(p => `
                 <button onclick="openPageFromEndpoint('${esc(p)}')"
-                  class="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors">
+                  class="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-600 hover:bg-blue-50 hover:text-blue-700 border border-gray-200 hover:border-blue-200 transition-colors font-medium">
                   ${esc(p)}
                 </button>`).join('')}
              </div>`
-          : '<div class="text-gray-700 text-xs">Not referenced by any detected page</div>'}
+          : '<div class="text-gray-400 text-sm">Not referenced by any detected page</div>'}
       </div>
 
-      <!-- request fields -->
+      <!-- request / response fields -->
       ${fieldsSection('Request', ep.requestSchemaName, ep.requestFields)}
-
-      <!-- response fields -->
       ${fieldsSection('Response', ep.responseSchemaName, ep.responseFields)}
 
     </div>`
@@ -378,35 +380,39 @@ function openPageFromEndpoint(relPath) {
 
 function fieldsSection(label, schemaName, fd) {
   const header = `
-    <div class="flex items-center gap-2 mb-2">
-      <span class="text-gray-500 text-xs font-semibold">${label}</span>
-      ${schemaName ? `<span class="text-gray-700 font-mono text-xs">${esc(schemaName)}</span>` : ''}
-      ${fd ? `<span class="text-gray-800 text-xs">(${fd.source})</span>` : ''}
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-gray-700 text-xs uppercase tracking-wide font-bold">${label}</span>
+      ${schemaName ? `<span class="text-gray-400 font-mono text-xs">${esc(schemaName)}</span>` : ''}
+      ${fd ? `<span class="text-xs text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">${fd.source}</span>` : ''}
     </div>`
 
-  if (!fd) return `<div class="mb-6">${header}<div class="text-gray-700 text-xs">No schema data available</div></div>`
+  if (!fd)
+    return `<div class="mb-6">${header}<p class="text-gray-400 text-sm">No schema data available</p></div>`
 
   const { fields } = fd
-  if (!fields.length) return `<div class="mb-6">${header}<div class="text-gray-700 text-xs">No fields</div></div>`
+  if (!fields.length)
+    return `<div class="mb-6">${header}<p class="text-gray-400 text-sm">No fields</p></div>`
 
   return `
-    <div class="mb-6">
+    <div class="mb-7">
       ${header}
-      <div class="border border-gray-800 rounded overflow-hidden">
-        <table class="w-full text-xs">
+      <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+        <table class="w-full text-sm">
           <thead>
-            <tr class="bg-gray-900 border-b border-gray-800">
-              <th class="text-left px-3 py-2 text-gray-600 font-medium">field</th>
-              <th class="text-left px-3 py-2 text-gray-600 font-medium">type</th>
-              <th class="text-left px-3 py-2 text-gray-600 font-medium">req</th>
+            <tr class="bg-gray-50 border-b border-gray-200">
+              <th class="text-left px-4 py-2.5 text-gray-500 font-semibold text-xs uppercase tracking-wide">Field</th>
+              <th class="text-left px-4 py-2.5 text-gray-500 font-semibold text-xs uppercase tracking-wide">Type</th>
+              <th class="text-left px-4 py-2.5 text-gray-500 font-semibold text-xs uppercase tracking-wide">Req</th>
             </tr>
           </thead>
-          <tbody>
-            ${fields.map((f, i) => `
-              <tr class="${i % 2 ? 'bg-gray-900/20' : ''} hover:bg-gray-800/60 transition-colors">
-                <td class="px-3 py-1.5 text-gray-200 font-mono">${esc(f.name)}</td>
-                <td class="px-3 py-1.5 text-blue-400/80 font-mono">${esc(String(f.type ?? 'any'))}</td>
-                <td class="px-3 py-1.5 ${f.required ? 'text-amber-500' : 'text-gray-700'}">${f.required ? '●' : '—'}</td>
+          <tbody class="divide-y divide-gray-100">
+            ${fields.map(f => `
+              <tr class="hover:bg-blue-50/40 transition-colors">
+                <td class="px-4 py-2.5 text-gray-800 font-mono text-sm">${esc(f.name)}</td>
+                <td class="px-4 py-2.5 text-blue-600 font-mono text-sm">${esc(String(f.type ?? 'any'))}</td>
+                <td class="px-4 py-2.5 text-sm">${f.required
+                  ? '<span class="text-amber-600 font-bold">●</span>'
+                  : '<span class="text-gray-300">—</span>'}</td>
               </tr>`).join('')}
           </tbody>
         </table>
@@ -416,7 +422,7 @@ function fieldsSection(label, schemaName, fd) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function scoreColor(s) {
-  return s >= 5 ? 'text-emerald-400' : s >= 3 ? 'text-yellow-500' : 'text-gray-600'
+  return s >= 5 ? 'text-emerald-600' : s >= 3 ? 'text-amber-500' : 'text-gray-400'
 }
 
 function esc(s) {
