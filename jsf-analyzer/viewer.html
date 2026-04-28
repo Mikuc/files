@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JSF Analyzer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen font-mono text-sm select-none">
+
+<!-- ── Top bar ─────────────────────────────────────────────────────────── -->
+<header class="border-b border-gray-800 px-5 py-2.5 flex items-center gap-4 shrink-0">
+  <span class="text-white font-bold text-sm tracking-tight">JSF Analyzer</span>
+  <span id="genDate" class="text-gray-600 text-xs"></span>
+  <div id="statsBar" class="hidden flex items-center gap-3 text-xs">
+    <span class="text-gray-500 bg-gray-900 border border-gray-800 rounded px-2 py-0.5" id="statPages"></span>
+    <span class="text-gray-500 bg-gray-900 border border-gray-800 rounded px-2 py-0.5" id="statEps"></span>
+    <span id="statWsdl" class="hidden text-gray-500 bg-gray-900 border border-gray-800 rounded px-2 py-0.5"></span>
+  </div>
+  <div class="ml-auto">
+    <label class="cursor-pointer text-xs text-gray-500 hover:text-gray-300 border border-gray-700 hover:border-gray-500 rounded px-3 py-1 transition-colors">
+      Load file
+      <input type="file" id="filePick" accept=".json" class="hidden" />
+    </label>
+  </div>
+</header>
+
+<!-- ── Empty state ──────────────────────────────────────────────────────── -->
+<div id="empty" class="flex flex-col items-center justify-center mt-32 gap-4">
+  <p class="text-gray-500 text-sm">Drop <code class="text-blue-400">analysis.json</code> anywhere on the page</p>
+  <p class="text-gray-700 text-xs">or</p>
+  <label class="cursor-pointer text-xs bg-blue-700 hover:bg-blue-600 text-white rounded px-4 py-2 transition-colors">
+    Pick file
+    <input type="file" id="filePick2" accept=".json" class="hidden" />
+  </label>
+  <p class="text-gray-800 text-xs mt-4">
+    Or place <code>viewer.html</code> next to <code>analysis.json</code> and serve via
+    <code>npx serve .</code>
+  </p>
+</div>
+
+<!-- ── App shell (hidden until loaded) ─────────────────────────────────── -->
+<div id="app" class="hidden flex flex-col" style="height:calc(100vh - 44px)">
+
+  <!-- Tab bar -->
+  <div class="flex border-b border-gray-800 px-5 pt-2 shrink-0">
+    <button id="tabBtnPages" onclick="switchTab('pages')"
+      class="text-xs font-semibold pb-2 mr-5 border-b-2 border-blue-500 text-blue-400 transition-colors">
+      Pages
+    </button>
+    <button id="tabBtnEndpoints" onclick="switchTab('endpoints')"
+      class="text-xs font-semibold pb-2 mr-5 border-b-2 border-transparent text-gray-600 hover:text-gray-300 transition-colors">
+      Endpoints
+    </button>
+  </div>
+
+  <!-- Two-column layout -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- Sidebar list -->
+    <aside class="w-64 shrink-0 border-r border-gray-800 flex flex-col">
+      <div class="p-2.5 shrink-0">
+        <input id="searchBox" type="text" placeholder="Search…" oninput="renderList()"
+          class="w-full bg-gray-900 border border-gray-800 rounded px-3 py-1.5 text-xs
+                 text-gray-100 placeholder-gray-700 focus:outline-none focus:ring-1
+                 focus:ring-blue-700 focus:border-blue-700" />
+      </div>
+      <div id="listPanel" class="flex-1 overflow-y-auto px-1.5 pb-4"></div>
+    </aside>
+
+    <!-- Detail panel -->
+    <main id="detail" class="flex-1 overflow-y-auto p-6">
+      <div id="detailEmpty" class="text-gray-700 text-xs mt-12 text-center">← select an item</div>
+    </main>
+
+  </div>
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let D        = null   // analysis.json data
+let tab      = 'pages'
+let selected = null   // currently selected relativePath or operationName
+
+// ─── Load ─────────────────────────────────────────────────────────────────────
+async function tryFetch() {
+  try {
+    const r = await fetch('./analysis.json')
+    if (r.ok) boot(await r.json())
+  } catch { /* no auto-load */ }
+}
+
+function readFile(file) {
+  const r = new FileReader()
+  r.onload = e => { try { boot(JSON.parse(e.target.result)) } catch { alert('Invalid JSON') } }
+  r.readAsText(file)
+}
+
+function boot(d) {
+  D = d
+  document.getElementById('empty').classList.add('hidden')
+  const app = document.getElementById('app')
+  app.classList.remove('hidden')
+  app.classList.add('flex')
+
+  document.getElementById('genDate').textContent =
+    'Generated ' + new Date(d.generatedAt).toLocaleString()
+  document.getElementById('statsBar').classList.remove('hidden')
+  document.getElementById('statsBar').classList.add('flex')
+  document.getElementById('statPages').textContent = d.summary.totalPages + ' pages'
+  document.getElementById('statEps').textContent   = d.summary.totalEndpoints + ' endpoints'
+  if (d.summary.totalWsdlTypes > 0) {
+    const w = document.getElementById('statWsdl')
+    w.textContent = d.summary.totalWsdlTypes + ' WSDL types'
+    w.classList.remove('hidden')
+  }
+
+  switchTab('pages')
+}
+
+document.getElementById('filePick').onchange  = e => e.target.files[0] && readFile(e.target.files[0])
+document.getElementById('filePick2').onchange = e => e.target.files[0] && readFile(e.target.files[0])
+document.addEventListener('dragover', e => e.preventDefault())
+document.addEventListener('drop', e => {
+  e.preventDefault()
+  const f = e.dataTransfer.files[0]
+  if (f?.name.endsWith('.json')) readFile(f)
+})
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+function switchTab(t) {
+  tab = t
+  selected = null
+  const on  = 'text-xs font-semibold pb-2 mr-5 border-b-2 border-blue-500 text-blue-400 transition-colors'
+  const off = 'text-xs font-semibold pb-2 mr-5 border-b-2 border-transparent text-gray-600 hover:text-gray-300 transition-colors'
+  document.getElementById('tabBtnPages').className     = t === 'pages'     ? on : off
+  document.getElementById('tabBtnEndpoints').className = t === 'endpoints' ? on : off
+  renderList()
+  showDetailEmpty()
+}
+
+function showDetailEmpty() {
+  document.getElementById('detail').innerHTML =
+    `<div class="text-gray-700 text-xs mt-12 text-center">← select a ${tab === 'pages' ? 'page' : 'endpoint'}</div>`
+}
+
+// ─── List ─────────────────────────────────────────────────────────────────────
+function renderList() {
+  if (!D) return
+  const q = (document.getElementById('searchBox').value || '').toLowerCase().trim()
+  tab === 'pages' ? renderPageList(q) : renderEndpointList(q)
+}
+
+function renderPageList(q) {
+  const pages = D.pages.filter(p => !q ||
+    p.relativePath.toLowerCase().includes(q) ||
+    (p.title ?? '').toLowerCase().includes(q) ||
+    (p.titleKey ?? '').toLowerCase().includes(q) ||
+    p.url.toLowerCase().includes(q) ||
+    p.beans.some(b =>
+      b.name.toLowerCase().includes(q) ||
+      b.methods.some(m => m.toLowerCase().includes(q)) ||
+      b.properties.some(pr => pr.toLowerCase().includes(q))
+    )
+  )
+
+  // Group by module directory (first path segment)
+  const groups = {}
+  for (const p of pages) {
+    const mod = p.relativePath.includes('/') ? p.relativePath.split('/')[0] : '.'
+    ;(groups[mod] ??= []).push(p)
+  }
+
+  const el = document.getElementById('listPanel')
+  if (!pages.length) { el.innerHTML = '<div class="text-gray-700 text-xs px-2 py-2">No results</div>'; return }
+
+  el.innerHTML = Object.entries(groups).map(([mod, ps]) => `
+    <div class="mb-3">
+      <div class="text-gray-700 text-xs px-2 py-1 uppercase tracking-widest">${esc(mod)}</div>
+      ${ps.map(p => {
+        const label   = p.title ?? p.titleKey ?? p.relativePath.split('/').pop().replace('.xhtml','')
+        const active  = selected === p.relativePath
+        const nbeans  = p.beans.filter(b => !b.isInfraBean).length
+        return `
+          <button onclick="openPage('${esc(p.relativePath)}')"
+            class="w-full text-left rounded px-2 py-2 transition-colors ${active ? 'bg-gray-800' : 'hover:bg-gray-900'}">
+            <div class="truncate text-xs ${active ? 'text-white' : 'text-gray-300'}">${esc(label)}</div>
+            <div class="truncate text-gray-600 text-xs mt-0.5">${esc(p.url)}</div>
+            <div class="text-gray-700 text-xs mt-0.5">${nbeans} bean${nbeans !== 1 ? 's' : ''}</div>
+          </button>`
+      }).join('')}
+    </div>
+  `).join('')
+}
+
+function renderEndpointList(q) {
+  const eps = Object.values(D.endpoints).filter(e => !q ||
+    e.operationName.toLowerCase().includes(q) ||
+    e.path.toLowerCase().includes(q) ||
+    (e.summary ?? '').toLowerCase().includes(q)
+  )
+
+  const el    = document.getElementById('listPanel')
+  const LIMIT = 250
+  const shown = eps.slice(0, LIMIT)
+
+  if (!eps.length) { el.innerHTML = '<div class="text-gray-700 text-xs px-2 py-2">No results</div>'; return }
+
+  el.innerHTML = shown.map(e => {
+    const usedBy = (D.endpointUsage[e.operationName] ?? []).length
+    const active = selected === e.operationName
+    return `
+      <button onclick="openEndpoint('${esc(e.operationName)}')"
+        class="w-full text-left rounded px-2 py-2 transition-colors ${active ? 'bg-gray-800' : 'hover:bg-gray-900'}">
+        <div class="truncate text-xs ${active ? 'text-white' : 'text-gray-300'}">${esc(e.operationName)}</div>
+        <div class="truncate text-gray-700 text-xs mt-0.5">${esc(e.path)}</div>
+        ${usedBy ? `<div class="text-blue-800 text-xs mt-0.5">${usedBy} page${usedBy !== 1 ? 's' : ''}</div>` : ''}
+      </button>`
+  }).join('')
+
+  if (eps.length > LIMIT)
+    el.innerHTML += `<div class="text-gray-700 text-xs px-2 py-2">+${eps.length - LIMIT} more — narrow search</div>`
+}
+
+// ─── Page detail ──────────────────────────────────────────────────────────────
+function openPage(relPath) {
+  selected = relPath
+  renderList()
+
+  const page = D.pages.find(p => p.relativePath === relPath)
+  if (!page) return
+
+  const mainBeans  = page.beans.filter(b => !b.isInfraBean)
+  const infraBeans = page.beans.filter(b =>  b.isInfraBean)
+
+  document.getElementById('detail').innerHTML = `
+    <div class="max-w-2xl">
+
+      <!-- header -->
+      <div class="mb-6">
+        <div class="flex flex-wrap items-start gap-2 mb-1">
+          <h2 class="text-white font-bold text-base leading-snug">
+            ${esc(page.title ?? page.relativePath.split('/').pop().replace('.xhtml',''))}
+          </h2>
+          ${page.titleKey ? `<span class="text-xs text-gray-600 bg-gray-900 border border-gray-800 rounded px-1.5 py-0.5 mt-0.5">${esc(page.titleKey)}</span>` : ''}
+        </div>
+        <div class="flex items-center gap-2 mt-1">
+          <span class="text-blue-400 font-mono text-xs">${esc(page.url)}</span>
+          <span class="text-gray-700 text-xs">${page.urlSource}</span>
+        </div>
+        <div class="text-gray-800 text-xs mt-1 truncate">${esc(page.filePath)}</div>
+      </div>
+
+      <!-- main beans -->
+      ${mainBeans.length === 0
+        ? '<p class="text-gray-600 text-xs">No feature beans detected.</p>'
+        : mainBeans.map(beanCard).join('')}
+
+      <!-- infra beans -->
+      ${infraBeans.length ? `
+        <details class="mt-4 group">
+          <summary class="text-gray-700 text-xs cursor-pointer hover:text-gray-500 list-none flex items-center gap-1 select-none">
+            <span class="group-open:rotate-90 inline-block transition-transform">▶</span>
+            Infrastructure beans (${infraBeans.length})
+          </summary>
+          <div class="mt-2 pl-3 border-l border-gray-800 space-y-1">
+            ${infraBeans.map(b => `
+              <div class="text-xs flex gap-2">
+                <span class="text-gray-600">${esc(b.name)}</span>
+                <span class="text-gray-800">${[...b.methods, ...b.properties].join(', ')}</span>
+              </div>`).join('')}
+          </div>
+        </details>
+      ` : ''}
+
+    </div>`
+}
+
+function beanCard(b) {
+  const eps = b.matchedEndpoints
+  return `
+    <div class="border border-gray-800 rounded-lg p-4 mb-4 bg-gray-900/30">
+
+      <div class="text-white font-semibold text-sm mb-3">${esc(b.name)}</div>
+
+      ${b.methods.length ? `
+        <div class="mb-2">
+          <span class="text-gray-700 text-xs mr-2">methods</span>
+          ${b.methods.map(m =>
+            `<span class="inline-block mr-1 mb-1 px-2 py-0.5 rounded-full bg-violet-950 border border-violet-900 text-violet-300 text-xs">${esc(m)}</span>`
+          ).join('')}
+        </div>` : ''}
+
+      ${b.properties.length ? `
+        <div class="mb-3">
+          <span class="text-gray-700 text-xs mr-2">properties</span>
+          ${b.properties.map(p =>
+            `<span class="inline-block mr-1 mb-1 px-1.5 py-0.5 rounded bg-gray-800 text-gray-500 text-xs">${esc(p)}</span>`
+          ).join('')}
+        </div>` : ''}
+
+      ${eps.length ? `
+        <details open>
+          <summary class="text-gray-600 text-xs cursor-pointer hover:text-gray-400 select-none mb-2 list-none flex items-center gap-1">
+            <span class="details-arrow transition-transform">▶</span>
+            Matched endpoints (${eps.length})
+          </summary>
+          <div class="border-l border-gray-800 pl-2 space-y-0.5">
+            ${eps.map(ep => `
+              <button onclick="openEndpointFromPage('${esc(ep.operationName)}')"
+                class="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-800 group/ep">
+                <span class="text-xs font-bold w-5 text-center shrink-0 ${scoreColor(ep.matchScore)}">${ep.matchScore}</span>
+                <span class="text-blue-400 text-xs group-hover/ep:text-blue-300 truncate">${esc(ep.operationName)}</span>
+                <span class="text-gray-700 text-xs truncate">${esc(ep.path)}</span>
+              </button>`).join('')}
+          </div>
+        </details>
+      ` : `<div class="text-gray-700 text-xs">No endpoint matches</div>`}
+
+    </div>`
+}
+
+// ─── Endpoint detail ──────────────────────────────────────────────────────────
+function openEndpointFromPage(opName) {
+  switchTab('endpoints')
+  openEndpoint(opName)
+}
+
+function openEndpoint(opName) {
+  selected = opName
+  renderList()
+
+  const ep = D.endpoints[opName]
+  if (!ep) return
+
+  const usedBy = D.endpointUsage[opName] ?? []
+
+  document.getElementById('detail').innerHTML = `
+    <div class="max-w-2xl">
+
+      <!-- header -->
+      <div class="mb-6">
+        <h2 class="text-white font-bold text-base mb-2">${esc(ep.operationName)}</h2>
+        <div class="flex items-center gap-2">
+          <span class="text-xs px-2 py-0.5 rounded bg-blue-950 border border-blue-900 text-blue-300 font-bold uppercase">${ep.method}</span>
+          <span class="text-gray-400 font-mono text-xs">${esc(ep.path)}</span>
+        </div>
+        ${ep.tags.length ? `<div class="text-gray-700 text-xs mt-1">${ep.tags.join(' · ')}</div>` : ''}
+      </div>
+
+      <!-- used by -->
+      <div class="mb-6">
+        <div class="text-gray-600 text-xs mb-2">Used by pages</div>
+        ${usedBy.length
+          ? `<div class="flex flex-wrap gap-1">
+              ${usedBy.map(p => `
+                <button onclick="openPageFromEndpoint('${esc(p)}')"
+                  class="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors">
+                  ${esc(p)}
+                </button>`).join('')}
+             </div>`
+          : '<div class="text-gray-700 text-xs">Not referenced by any detected page</div>'}
+      </div>
+
+      <!-- request fields -->
+      ${fieldsSection('Request', ep.requestSchemaName, ep.requestFields)}
+
+      <!-- response fields -->
+      ${fieldsSection('Response', ep.responseSchemaName, ep.responseFields)}
+
+    </div>`
+}
+
+function openPageFromEndpoint(relPath) {
+  switchTab('pages')
+  openPage(relPath)
+}
+
+function fieldsSection(label, schemaName, fd) {
+  const header = `
+    <div class="flex items-center gap-2 mb-2">
+      <span class="text-gray-500 text-xs font-semibold">${label}</span>
+      ${schemaName ? `<span class="text-gray-700 font-mono text-xs">${esc(schemaName)}</span>` : ''}
+      ${fd ? `<span class="text-gray-800 text-xs">(${fd.source})</span>` : ''}
+    </div>`
+
+  if (!fd) return `<div class="mb-6">${header}<div class="text-gray-700 text-xs">No schema data available</div></div>`
+
+  const { fields } = fd
+  if (!fields.length) return `<div class="mb-6">${header}<div class="text-gray-700 text-xs">No fields</div></div>`
+
+  return `
+    <div class="mb-6">
+      ${header}
+      <div class="border border-gray-800 rounded overflow-hidden">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="bg-gray-900 border-b border-gray-800">
+              <th class="text-left px-3 py-2 text-gray-600 font-medium">field</th>
+              <th class="text-left px-3 py-2 text-gray-600 font-medium">type</th>
+              <th class="text-left px-3 py-2 text-gray-600 font-medium">req</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${fields.map((f, i) => `
+              <tr class="${i % 2 ? 'bg-gray-900/20' : ''} hover:bg-gray-800/60 transition-colors">
+                <td class="px-3 py-1.5 text-gray-200 font-mono">${esc(f.name)}</td>
+                <td class="px-3 py-1.5 text-blue-400/80 font-mono">${esc(String(f.type ?? 'any'))}</td>
+                <td class="px-3 py-1.5 ${f.required ? 'text-amber-500' : 'text-gray-700'}">${f.required ? '●' : '—'}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function scoreColor(s) {
+  return s >= 5 ? 'text-emerald-400' : s >= 3 ? 'text-yellow-500' : 'text-gray-600'
+}
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+tryFetch()
+</script>
+
+<style>
+  details[open] > summary .details-arrow { transform: rotate(90deg); }
+</style>
+</body>
+</html>
