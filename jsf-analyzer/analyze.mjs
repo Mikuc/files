@@ -680,6 +680,8 @@ async function main() {
     endpoints: enrichedEndpoints,
     // Inverted index: which pages reference each endpoint
     endpointUsage,
+    // WSDL complex type registry (populated only when --wsdl is used)
+    wsdlTypes: wsdlRegistry,
   }
 
   if (dryRun) {

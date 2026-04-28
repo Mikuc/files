@@ -52,6 +52,10 @@
       class="text-sm font-semibold py-3 mr-6 border-b-2 border-transparent text-gray-400 hover:text-gray-600 transition-colors">
       Endpoints
     </button>
+    <button id="tabBtnTypes" onclick="switchTab('types')"
+      class="text-sm font-semibold py-3 mr-6 border-b-2 border-transparent text-gray-400 hover:text-gray-600 transition-colors hidden">
+      Types
+    </button>
   </div>
 
   <!-- Two-column layout -->
@@ -113,6 +117,7 @@ function boot(d) {
     const w = document.getElementById('statWsdl')
     w.textContent = d.summary.totalWsdlTypes + ' WSDL types'
     w.classList.remove('hidden')
+    document.getElementById('tabBtnTypes').classList.remove('hidden')
   }
 
   switchTab('pages')
@@ -135,16 +140,23 @@ function switchTab(t) {
   const off = 'text-sm font-semibold py-3 mr-6 border-b-2 border-transparent text-gray-400 hover:text-gray-600 transition-colors'
   document.getElementById('tabBtnPages').className     = t === 'pages'     ? on : off
   document.getElementById('tabBtnEndpoints').className = t === 'endpoints' ? on : off
+  // Types tab: only show when WSDL data is present; keep hidden class otherwise
+  const typesBtn = document.getElementById('tabBtnTypes')
+  if (!typesBtn.classList.contains('hidden'))
+    typesBtn.className = (t === 'types' ? on : off)
   renderList()
+  const label = { pages: 'page', endpoints: 'endpoint', types: 'type' }[t] ?? 'item'
   document.getElementById('detail').innerHTML =
-    `<div class="text-gray-300 text-sm mt-16 text-center">← select a ${t === 'pages' ? 'page' : 'endpoint'}</div>`
+    `<div class="text-gray-300 text-sm mt-16 text-center">← select a ${label}</div>`
 }
 
 // ─── List ─────────────────────────────────────────────────────────────────────
 function renderList() {
   if (!D) return
   const q = (document.getElementById('searchBox').value || '').toLowerCase().trim()
-  tab === 'pages' ? renderPageList(q) : renderEndpointList(q)
+  if (tab === 'pages')     renderPageList(q)
+  else if (tab === 'endpoints') renderEndpointList(q)
+  else                     renderTypeList(q)
 }
 
 function renderPageList(q) {
@@ -417,6 +429,112 @@ function fieldsSection(label, schemaName, fd) {
           </tbody>
         </table>
       </div>
+    </div>`
+}
+
+// ─── Types tab ────────────────────────────────────────────────────────────────
+
+function renderTypeList(q) {
+  const types  = D.wsdlTypes ?? {}
+  const names  = Object.keys(types).sort()
+  const filtered = names.filter(n => !q || n.toLowerCase().includes(q))
+
+  const el    = document.getElementById('listPanel')
+  const LIMIT = 300
+
+  if (!filtered.length) {
+    el.innerHTML = '<div class="text-gray-400 text-xs px-4 py-3">No results</div>'
+    return
+  }
+
+  el.innerHTML = filtered.slice(0, LIMIT).map(name => {
+    const fieldCount = (types[name] ?? []).length
+    const active = selected === name
+    return `
+      <button onclick="openType('${esc(name)}')"
+        class="w-full text-left px-4 py-2.5 transition-colors ${active ? 'bg-blue-50 border-r-2 border-blue-500' : 'hover:bg-gray-50'}">
+        <div class="truncate text-sm font-mono font-medium ${active ? 'text-blue-700' : 'text-gray-800'}">${esc(name)}</div>
+        <div class="text-gray-400 text-xs mt-0.5">${fieldCount} field${fieldCount !== 1 ? 's' : ''}</div>
+      </button>`
+  }).join('')
+
+  if (filtered.length > LIMIT)
+    el.innerHTML += `<div class="text-gray-400 text-xs px-4 py-3">+${filtered.length - LIMIT} more — narrow search</div>`
+}
+
+function openType(name) {
+  selected = name
+  renderList()
+
+  const fields = (D.wsdlTypes ?? {})[name]
+  if (!fields) return
+
+  // Which endpoints reference this type?
+  const usedInEndpoints = Object.values(D.endpoints).filter(ep =>
+    ep.requestSchemaName  === name ||
+    ep.responseSchemaName === name ||
+    ep.requestFields?.source  === 'wsdl' && ep.requestSchemaName  === name ||
+    ep.responseFields?.source === 'wsdl' && ep.responseSchemaName === name
+  )
+
+  document.getElementById('detail').innerHTML = `
+    <div class="max-w-2xl mx-auto">
+
+      <div class="mb-7">
+        <h2 class="text-gray-900 font-bold text-xl font-mono mb-1">${esc(name)}</h2>
+        <div class="text-gray-400 text-sm">${fields.length} field${fields.length !== 1 ? 's' : ''} · source: WSDL/XSD</div>
+      </div>
+
+      <!-- Fields table -->
+      <div class="mb-7">
+        <div class="text-gray-500 text-xs uppercase tracking-wide font-bold mb-3">Fields</div>
+        ${fields.length === 0
+          ? '<p class="text-gray-400 text-sm">No fields</p>'
+          : `<div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="bg-gray-50 border-b border-gray-200">
+                    <th class="text-left px-4 py-2.5 text-gray-500 font-semibold text-xs uppercase tracking-wide">Field</th>
+                    <th class="text-left px-4 py-2.5 text-gray-500 font-semibold text-xs uppercase tracking-wide">Type</th>
+                    <th class="text-left px-4 py-2.5 text-gray-500 font-semibold text-xs uppercase tracking-wide">Occurs</th>
+                    <th class="text-left px-4 py-2.5 text-gray-500 font-semibold text-xs uppercase tracking-wide">Req</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  ${fields.map(f => `
+                    <tr class="hover:bg-blue-50/40 transition-colors">
+                      <td class="px-4 py-2.5 text-gray-800 font-mono">${esc(f.name)}</td>
+                      <td class="px-4 py-2.5 text-blue-600 font-mono">${esc(String(f.type ?? 'any'))}</td>
+                      <td class="px-4 py-2.5 text-gray-400 font-mono text-xs">${f.minOccurs}..${f.maxOccurs}</td>
+                      <td class="px-4 py-2.5">${f.required
+                        ? '<span class="text-amber-600 font-bold">●</span>'
+                        : '<span class="text-gray-300">—</span>'}</td>
+                    </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>`
+        }
+      </div>
+
+      <!-- Endpoints that reference this type -->
+      ${usedInEndpoints.length ? `
+        <div>
+          <div class="text-gray-500 text-xs uppercase tracking-wide font-bold mb-3">Referenced by endpoints</div>
+          <div class="space-y-1">
+            ${usedInEndpoints.map(ep => {
+              const role = ep.requestSchemaName === name ? 'request' : 'response'
+              return `
+                <button onclick="openEndpointFromPage('${esc(ep.operationName)}')"
+                  class="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors group">
+                  <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold uppercase border border-blue-200 shrink-0">${ep.method}</span>
+                  <span class="text-blue-600 font-medium group-hover:text-blue-800 truncate">${esc(ep.operationName)}</span>
+                  <span class="text-gray-400 text-xs shrink-0">${role}</span>
+                </button>`
+            }).join('')}
+          </div>
+        </div>
+      ` : ''}
+
     </div>`
 }
 
